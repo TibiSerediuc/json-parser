@@ -1,4 +1,4 @@
-_pycache__/
+__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -20,12 +20,18 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-.env
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
 
 # Type checking
 .mypy_cache/
@@ -42,3 +48,6 @@ dmypy.json
 # Nix
 result
 result-*
+
+# UV
+uv.lock

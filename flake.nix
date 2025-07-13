@@ -11,19 +11,13 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        
-        pythonEnv = pkgs.python3.withPackages (ps: with ps; [
-          pytest
-          pytest-cov
-          black
-          flake8
-          mypy
-        ]);
       in
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            pythonEnv
+            # Python and UV
+            python3
+            uv
             git
             
             # Development tools
@@ -31,7 +25,7 @@
             ripgrep
             fd
             
-            # These are planned for future C port
+            # Might use in future for porting to C 
             #gcc
             #gdb
             #valgrind
@@ -43,11 +37,18 @@
           shellHook = ''
             echo "JSON Parser Development Environment"
             echo "Python version: $(python --version)"
-            echo "Available commands:"
-            echo "  pytest      - Run tests"
-            echo "  black       - Format code"
-            echo "  flake8      - Lint code"
-            echo "  mypy        - Type checking"
+            echo "UV version: $(uv --version)"
+            echo ""
+            echo "Setup commands:"
+            echo "  uv venv              - Create virtual environment"
+            echo "  source .venv/bin/activate  - Activate venv"
+            echo "  uv pip install -e . - Install project in dev mode"
+            echo ""
+            echo "Development commands:"
+            echo "  uv run pytest       - Run tests"
+            echo "  uv run black .       - Format code"
+            echo "  uv run flake8 .      - Lint code"
+            echo "  uv run mypy src/     - Type checking"
             echo ""
             echo "Project structure:"
             echo "  src/        - Source code"
@@ -55,14 +56,23 @@
             echo "  examples/   - Example JSON files"
             echo ""
             
-            # Set up Python path
-            export PYTHONPATH="$PWD/src:$PYTHONPATH"
-            
             # Create directories if they don't exist
             mkdir -p src tests examples tests/fixtures/valid tests/fixtures/invalid
             
             # Initialize __init__.py files
             touch src/__init__.py tests/__init__.py
+            
+            # Create virtual environment if it doesn't exist
+            if [ ! -d ".venv" ]; then
+              echo "Creating virtual environment..."
+              uv venv
+            fi
+            
+            # Activate virtual environment
+            source .venv/bin/activate
+            
+            # Set up Python path
+            export PYTHONPATH="$PWD/src:$PYTHONPATH"
           '';
         };
       });
