@@ -47,6 +47,8 @@ ESCAPE_MAP = {
         't' : '\t'
 }
 
+NUMBERS_VALID_CHARS = "-+0123456789eE."
+
 class Token:
 
     def __init__(self, type_: TokenType, value):
@@ -59,7 +61,8 @@ class Token:
 
 if __name__ == "__main__":
 
-    input_string = r'{"key": "v\nalu\\e", "number": 123}'
+    input_string = r'{"name": "John", "age": 30, "is_student": false, "grades": [90, 85, 88], "address": null}'
+    input_ = r'{"key": "v\nalu\\e", "number": 123}'
     state = State.DEFAULT
     index = 0
     LexerOutput = []
@@ -98,10 +101,10 @@ if __name__ == "__main__":
                     state = State.STRING
 
                 case c if c == '-' or '0' <= c <= '9':
+                    buffer += currChar
                     state = State.NUMBER
 
                 case c if c == 't' or c == 'f' or c == 'n':
-                    prevChar = currChar
                     state = State.LITERAL
 
         elif state == State.STRING:
@@ -124,13 +127,59 @@ if __name__ == "__main__":
                 buffer += ESCAPE_MAP[currChar]
             else:
                 raise LexerError("Invalid escape character", index)
-
             state = state.STRING
 
+
+
+
         elif state == State.NUMBER:
-            pass
+
+            nextIndex = index
+            firstDecimalPoint = False
+            firstExponentSymbol = False
+
+            while nextIndex < len(input_string) and input_string[nextIndex] in NUMBERS_VALID_CHARS:
+
+                nextChar = input_string[nextIndex]
+
+                if nextChar == '.':
+                    if firstDecimalPoint == False:
+                        buffer += nextChar
+                        firstDecimalPoint = True
+                    else:
+                        raise LexerError("Number with multiple decimal points", index)
+
+                if nextChar == 'e' or nextChar == 'E':
+                    if firstExponentSymbol == False:
+                        buffer += nextChar
+                        firstExponentSymbol = True
+                    else:
+                        raise LexerError("Number with multiple exponent symbols", index)
+
+                buffer += nextChar
+                nextIndex += 1
+
+            currToken.type = TokenType.NUMBER
+            currToken.value = buffer
+            LexerOutput.append(currToken)
+            state = state.DEFAULT
+
+
+
         elif state == State.LITERAL:
-            pass
+
+            if input_string[index-1:index+3] == 'true':
+                buffer += input_string[index-1:index+3]
+                currToken.type = TokenType.TRUE
+            elif input_string[index-1:index+3] == 'null':
+                currToken.type = TokenType.NULL
+            elif input_string[index-1:index+4] == 'false':
+                currToken.type = TokenType.FALSE               
+            else:
+                raise LexerError("Invalid LITERAL", index - 1)
+            
+            LexerOutput.append(currToken)
+            state = state.DEFAULT
 
         if currChar in SINGLE_CHAR_TOKENS:
             LexerOutput.append(currToken)
