@@ -1,6 +1,7 @@
 # For start, I want to write a simple lexer that work on JSON strings
 
 from enum import Enum
+from error_handling import LexerError
 
 class TokenType(Enum):
 
@@ -35,15 +36,15 @@ SINGLE_CHAR_TOKENS = {
         TokenType.COMMA.value
 }
 
-ESCAPE_SEQUENCE_CHARS = {
-        '"',
-        '\\',
-        '/',
-        'b',
-        'f',
-        'n',
-        'r',
-        't'
+ESCAPE_MAP = {
+        '"' : '"',
+        '\\': '\\',
+        '/' : '/',
+        'b' : '\b',
+        'f' : '\f',
+        'n' : '\n',
+        'r' : '\r',
+        't' : '\t'
 }
 
 class Token:
@@ -58,7 +59,7 @@ class Token:
 
 if __name__ == "__main__":
 
-    input_string = '{"key": "value", "number": 123}'
+    input_string = r'{"key": "v\nalu\\e", "number": 123}'
     state = State.DEFAULT
     index = 0
     LexerOutput = []
@@ -109,18 +110,23 @@ if __name__ == "__main__":
                 state = State.ESCAPE
             # Reaching end of string
             elif currChar == '"':
-                currToken.type = TokenType.NUMBER
+                currToken.type = TokenType.STRING
+                currToken.value = buffer
+                LexerOutput.append(currToken)
+
+                # After the string is done, reset state machine to default
+                state = state.DEFAULT
             else:
                 buffer += currChar
 
         elif state == State.ESCAPE:
+            if currChar in ESCAPE_MAP:
+                buffer += ESCAPE_MAP[currChar]
+            else:
+                raise LexerError("Invalid escape character", index)
 
-            currToken = Token(None, None)
-            if currChar in ESCAPE_SEQUENCE_CHARS:
-                pass
-                
+            state = state.STRING
 
-            pass
         elif state == State.NUMBER:
             pass
         elif state == State.LITERAL:
@@ -130,6 +136,6 @@ if __name__ == "__main__":
             LexerOutput.append(currToken)
         index += 1
 
-    
+    print('\n') 
     for token in LexerOutput:
         print(token)
