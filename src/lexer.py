@@ -1,10 +1,8 @@
-# For start, I want to write a simple lexer that work on JSON strings
-
 from enum import Enum
 from error_handling import LexerError
 
+# All possible tokens in a JSON string
 class TokenType(Enum):
-
     NONE = None
     LEFT_BRACE = '{'
     RIGHT_BRACE = '}'
@@ -19,6 +17,7 @@ class TokenType(Enum):
     NULL = 'null'
     EOF = 'EOF'
     
+# States used inside the state machine for robust handling
 class State(Enum):
     DEFAULT = 0
     STRING = 1
@@ -26,7 +25,7 @@ class State(Enum):
     LITERAL = 3
     ESCAPE = 4
 
-# Used to trivially check whether a token to be formed for a single character token
+# Used to trivially check whether the token is a single character token
 SINGLE_CHAR_TOKENS = {
         TokenType.LEFT_BRACE.value,
         TokenType.RIGHT_BRACE.value,
@@ -36,6 +35,7 @@ SINGLE_CHAR_TOKENS = {
         TokenType.COMMA.value
 }
 
+# Maps the escape sequence characters
 ESCAPE_MAP = {
         '"' : '"',
         '\\': '\\',
@@ -59,64 +59,62 @@ class Token:
         return f"Token: {self.type}, {repr(self.value)})"
 
 
-if __name__ == "__main__":
-
-    input_string = r'{"name": "John", "age": 30, "is_student": false, "grades": [90, 85, 88], "address": null}'
-    input_ = r'{"key": "v\nalu\\e", "number": 123}'
+def tokenize(input_string):
     state = State.DEFAULT
     index = 0
-    LexerOutput = []
-
-    prevChar = ''
+    tokens = []
     buffer = ''
     
     while index < len(input_string):
 
         currChar = input_string[index]
-        currToken = Token(None, None)
-
+        
         if state == State.DEFAULT:
+            
+            if currChar.isspace():
+                index += 1
+                continue
+
             buffer = ''
     
             match currChar:
                 case '{':                
-                    currToken.type = TokenType.LEFT_BRACE
+                    tokens.append(Token(TokenType.LEFT_BRACE, currChar))
 
                 case '}':
-                    currToken.type = TokenType.RIGHT_BRACE
+                    tokens.append(Token(TokenType.RIGHT_BRACE, currChar))
 
                 case '[':
-                    currToken.type = TokenType.LEFT_BRACKET
+                    tokens.append(Token(TokenType.LEFT_BRACKET, currChar))
 
                 case ']':
-                    currToken.type = TokenType.RIGHT_BRACKET
+                    tokens.append(Token(TokenType.RIGHT_BRACKET, currChar))
                 
                 case ':':
-                    currToken.type = TokenType.COLON
+                    tokens.append(Token(TokenType.COLON, currChar))
 
                 case ',':
-                    currToken.type = TokenType.COMMA
+                    tokens.append(Token(TokenType.COMMA, currChar))
 
                 case '"':
                     state = State.STRING
 
-                case c if c == '-' or '0' <= c <= '9':
-                    buffer += currChar
+                case c if c == '-' or c.isdigit():
+                    buffer = currChar
                     state = State.NUMBER
 
-                case c if c == 't' or c == 'f' or c == 'n':
+                case c if c in "tfn": # true, false, null
                     state = State.LITERAL
+                    continue
 
+                
         elif state == State.STRING:
             # Reaching ESCAPE sequence
             if currChar == '\\':
                 state = State.ESCAPE
             # Reaching end of string
             elif currChar == '"':
-                currToken.type = TokenType.STRING
-                currToken.value = buffer
-                LexerOutput.append(currToken)
-
+                tokens.append(Token(TokenType.STRING, buffer))
                 # After the string is done, reset state machine to default
                 state = state.DEFAULT
             else:
@@ -126,65 +124,77 @@ if __name__ == "__main__":
             if currChar in ESCAPE_MAP:
                 buffer += ESCAPE_MAP[currChar]
             else:
-                raise LexerError("Invalid escape character", index)
+                raise LexerError("Invalid escape character '{currChar}'", index)
             state = state.STRING
-
-
 
 
         elif state == State.NUMBER:
 
-            nextIndex = index
-            firstDecimalPoint = False
-            firstExponentSymbol = False
+            if currChar in NUMBERS_VALID_CHARS:
+                buffer += currChar
+            else:
 
-            while nextIndex < len(input_string) and input_string[nextIndex] in NUMBERS_VALID_CHARS:
-
-                nextChar = input_string[nextIndex]
-
-                if nextChar == '.':
-                    if firstDecimalPoint == False:
-                        buffer += nextChar
-                        firstDecimalPoint = True
+                try:
+                    if '.' in buffer or 'e' in buffer.lower():
+                        value = float(buffer)
                     else:
-                        raise LexerError("Number with multiple decimal points", index)
+                        value = int(buffer)
+                    tokens.append(Token(TokenType.NUMBER, value))
 
-                if nextChar == 'e' or nextChar == 'E':
-                    if firstExponentSymbol == False:
-                        buffer += nextChar
-                        firstExponentSymbol = True
-                    else:
-                        raise LexerError("Number with multiple exponent symbols", index)
+                except ValueError:
+                    raise LexerError(f"Invalid number format '{buffer}'", index - len(buffer))
 
-                buffer += nextChar
-                nextIndex += 1
-
-            currToken.type = TokenType.NUMBER
-            currToken.value = buffer
-            LexerOutput.append(currToken)
-            state = state.DEFAULT
-
+                state = State.DEFAULT
+                buffer = ''
+                continue
 
 
         elif state == State.LITERAL:
 
-            if input_string[index-1:index+3] == 'true':
-                buffer += input_string[index-1:index+3]
-                currToken.type = TokenType.TRUE
-            elif input_string[index-1:index+3] == 'null':
-                currToken.type = TokenType.NULL
-            elif input_string[index-1:index+4] == 'false':
-                currToken.type = TokenType.FALSE               
+            if input_string[index:index+4] == 'true':
+                buffer = input_string[index:index+4]
+                tokens.append(Token(TokenType.TRUE, buffer))
+            elif input_string[index:index+4] == 'null':
+                tokens.append(Token(TokenType.NULL, None))
+            elif input_string[index:index+5] == 'false':
+                buffer = input_string[index:index+5]
+                tokens.append(Token(TokenType.FALSE, buffer))      
             else:
                 raise LexerError("Invalid LITERAL", index - 1)
             
-            LexerOutput.append(currToken)
             state = state.DEFAULT
 
-        if currChar in SINGLE_CHAR_TOKENS:
-            LexerOutput.append(currToken)
         index += 1
 
-    print('\n') 
-    for token in LexerOutput:
-        print(token)
+    if state == State.NUMBER:
+        try:
+            if '.' in buffer or 'e' in buffer.lower():
+                value = float(buffer)
+            else:
+                value = int(buffer)
+            tokens.append(Token(TokenType.NUMBER, value))
+
+        except ValueError:
+            raise LexerError(f"Invalid number format '{buffer}'", len(input_string) - len(buffer))
+    elif state == State.STRING:
+        raise LexerError("Unterminated string", len(input_string))
+    elif state == State.LITERAL:
+        raise LexerError(f"Incomplete literal '{buffer}'", len(input_string) - len(buffer))
+
+    tokens.append(Token(TokenType.EOF, None))
+    return tokens
+
+
+if __name__ == "__main__":
+
+    input_string = r'{"name": "John", "age": 30, "is_student": false, "grades": [90, 85, 88], "address": null}'
+    input_ = r'{"key": "v\nalu\\e", "number": 123}'
+
+
+    try:
+        tokens = tokenize(input_string)
+        print("Tokens for input string: ")
+        for token in tokens:
+            print(token)
+    except LexerError:
+        print(f"Lexer Error: {e}")
