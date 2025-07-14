@@ -1,3 +1,5 @@
+import os
+import sys
 from enum import Enum
 from error_handling import LexerError
 
@@ -60,17 +62,28 @@ class Token:
 
 
 def tokenize(input_string):
+    """
+    Main tokenizer function.
+
+    Args:
+        input_string (str): Input JSON string to be tokenized
+
+    Returns:
+        list: List of tokens
+
+    Raises:
+        LexerError: If there's an error during tokenization
+    """
+
     state = State.DEFAULT
     index = 0
     tokens = []
     buffer = ''
     
     while index < len(input_string):
-
         currChar = input_string[index]
         
         if state == State.DEFAULT:
-            
             if currChar.isspace():
                 index += 1
                 continue
@@ -107,6 +120,9 @@ def tokenize(input_string):
                     state = State.LITERAL
                     continue
 
+                case _:
+                    raise LexerError(f"Unexpected character '{currChar}'", index)
+
                 
         elif state == State.STRING:
             # Reaching ESCAPE sequence
@@ -126,7 +142,6 @@ def tokenize(input_string):
             else:
                 raise LexerError("Invalid escape character '{currChar}'", index)
             state = state.STRING
-
 
         elif state == State.NUMBER:
 
@@ -148,17 +163,17 @@ def tokenize(input_string):
                 buffer = ''
                 continue
 
-
         elif state == State.LITERAL:
 
             if input_string[index:index+4] == 'true':
-                buffer = input_string[index:index+4]
-                tokens.append(Token(TokenType.TRUE, buffer))
+                tokens.append(Token(TokenType.TRUE, True))
+                index += 3
             elif input_string[index:index+4] == 'null':
                 tokens.append(Token(TokenType.NULL, None))
+                index += 3
             elif input_string[index:index+5] == 'false':
-                buffer = input_string[index:index+5]
-                tokens.append(Token(TokenType.FALSE, buffer))      
+                tokens.append(Token(TokenType.FALSE, False))
+                index += 4
             else:
                 raise LexerError("Invalid LITERAL", index - 1)
             
@@ -173,7 +188,6 @@ def tokenize(input_string):
             else:
                 value = int(buffer)
             tokens.append(Token(TokenType.NUMBER, value))
-
         except ValueError:
             raise LexerError(f"Invalid number format '{buffer}'", len(input_string) - len(buffer))
     elif state == State.STRING:
@@ -185,16 +199,55 @@ def tokenize(input_string):
     return tokens
 
 
-if __name__ == "__main__":
+def tokenize_from_file(file_path):
+    """
+    Tokenize JSON from a file.
 
-    input_string = r'{"name": "John", "age": 30, "is_student": false, "grades": [90, 85, 88], "address": null}'
-    input_ = r'{"key": "v\nalu\\e", "number": 123}'
+    Args:
+        file_path (str): Path to the JSON file
 
+    Returns:
+        list: List of tokens
+
+    Raises:
+        FileNotFoundError: If the file doesn't exist
+        LexerError: If there's an error during tokenization
+    """
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
 
     try:
-        tokens = tokenize(input_string)
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+        return tokenize(content)
+    except IOError as e:
+        raise LexerError(f"Error reading file '{file_path}': {e}", 0)
+
+def tokenize_from_string(json_string):
+    """
+    Tokenize JSON from a string.
+
+    Args:
+        json_string (str): JSON string to tokenize
+
+    Returns:
+        list: List of tokens
+
+    Raises:
+        LexerError: If there's an error during tokenization 
+    """
+    return tokenize(json_string)
+
+
+if __name__ == "__main__":
+    """
+    Main function to handle command line arguments and demonstrate usage.
+    """
+    try:
+        tokens = tokenize_from_file("../examples/test.json")
         print("Tokens for input string: ")
         for token in tokens:
             print(token)
     except LexerError:
-        print(f"Lexer Error: {e}")
+            print(f"Lexer Error: {e}")
