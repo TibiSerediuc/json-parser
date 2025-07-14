@@ -1,1 +1,31 @@
-{"name": "John", "age": 30, "is_student": false, "grades": [90, 85, 88], "address": null}
+{
+  "name": "Alice \"The Coder\"",
+  "age": 29,
+  "is_active": true,
+  "projects": [
+    {
+      "title": "AI Research",
+      "languages": ["Python", "C++", "Lisp"],
+      "details": {
+        "open_source": true,
+        "contributors": 48,
+        "repository": "https:\\/\\/github.com\\/alice\\/ai-research"
+      }
+    },
+    {
+      "title": "Game Dev",
+      "languages": ["C#", "GLSL"],
+      "details": {
+        "completed": false,
+        "release_date": null
+      }
+    }
+  ],
+  "notes": "Line one\\nLine two\\tTabbed\\nUnicode: \\u2603",
+  "misc": {
+    "empty_object": {},
+    "empty_array": [],
+    "pi_approx": 3.14159,
+    "scientific": 6.022e23
+  }
+} 
