@@ -26,6 +26,7 @@ class State(Enum):
     NUMBER = 2
     LITERAL = 3
     ESCAPE = 4
+    UNICODE_ESCAPE = 5
 
 # Used to trivially check whether the token is a single character token
 SINGLE_CHAR_TOKENS = {
@@ -58,7 +59,7 @@ class Token:
         self.value = value
 
     def __repr__(self):
-        return f"Token: {self.type}, {repr(self.value)})"
+        return f"{self.type}, {self.value}"
 
 
 def tokenize(input_string):
@@ -79,6 +80,7 @@ def tokenize(input_string):
     index = 0
     tokens = []
     buffer = ''
+    unicode_buffer = ''
     
     while index < len(input_string):
         currChar = input_string[index]
@@ -139,9 +141,26 @@ def tokenize(input_string):
         elif state == State.ESCAPE:
             if currChar in ESCAPE_MAP:
                 buffer += ESCAPE_MAP[currChar]
+                state = State.STRING
+            elif currChar =='u':
+                unicode_buffer = ''
+                state = State.UNICODE_ESCAPE
             else:
                 raise LexerError("Invalid escape character '{currChar}'", index)
-            state = state.STRING
+    
+
+        elif state == State.UNICODE_ESCAPE:
+            if currChar in '0123456789ABCDEF':
+                unicode_buffer += currChar
+                if len(unicode_buffer) == 4:
+                    try:
+                        unicode_char = chr(int(unicode_buffer), 16)
+                        buffer += unicode_char
+                    except ValueError:
+                        raise LexerError(f"Invalid Unicode escape sequence '\\u{unicode_buffer}'", index - 4)
+                    state = State.STRING
+            else:
+                raise LexerError(f"Invalid Unicode escape sequence \\u{unicode_buffer}{currChar}'", index)
 
         elif state == State.NUMBER:
 
@@ -194,6 +213,11 @@ def tokenize(input_string):
         raise LexerError("Unterminated string", len(input_string))
     elif state == State.LITERAL:
         raise LexerError(f"Incomplete literal '{buffer}'", len(input_string) - len(buffer))
+    elif state == State.ESCAPE:
+        raise LexerError("Incomplete escape sequence", len(input_string))
+    elif state == State.UNICODE_ESCAPE:
+        raise LexerError(f"Incomplete Unicode escape sequence '\\u{unicode_buffer}'", len(input_string))
+
 
     tokens.append(Token(TokenType.EOF, None))
     return tokens

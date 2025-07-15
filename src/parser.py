@@ -1,21 +1,29 @@
-from error_handling import ParserError
-from lexer import TokenType, Token
+from error_handling import ParserError, LexerError
+from lexer import TokenType, Token, tokenize_from_file
 
 class Parser:
-    def __init__(self):
+    def __init__(self, tokens):
         self.tokens = tokens
         self.index = 0
 
+    def advance(self):
+        self.index += 1
 
     def peek(self):
         # Peek the current token
+        if self.index >= len(self.tokens):
+            raise ParserError("Unexpected end of input")
         return self.tokens[self.index]
 
     def consume(self, expected_type = None):
+
+        if self.index >= len(self.tokens):
+            raise ParserError("Unexpected end of input")
+
         token = self.tokens[self.index]
         if expected_type and token.type != expected_type:
             raise ParserError(f"Expected {expected_type}, got {token.type}")
-        self.index += 1
+        self.advance()
         return token
 
     def parse_value(self):
@@ -40,5 +48,91 @@ class Parser:
             return None
         else:
             raise ParserError(f"Unexpected token : {token}")
+
+
+    def parse_object(self):
+
+        obj = {}
+        self.consume(TokenType.LEFT_BRACE)
+
+        if self.peek().type == TokenType.RIGHT_BRACE:
+            self.consume()
+            return obj
+
+        while True:
+            keyToken = self.consume(TokenType.STRING)
+            self.consume(TokenType.COLON)
+            value = self.parse_value()
+            obj[keyToken.value] = value
+
+            if self.peek().type == TokenType.COMMA:
+                self.advance()
+            elif self.peek().type == TokenType.RIGHT_BRACE:
+                self.consume()
+                break
+            else:
+                raise ParserError("Expected comma or right brace in object")
+
+        return obj
+
+    def parse_array(self):
+
+        self.consume(TokenType.LEFT_BRACKET)
+        array = []
+        
+        if self.peek().type == TokenType.RIGHT_BRACKET:
+            self.consume()
+            return array
+
+        while True:
+            
+            value = self.parse_value()
+            array.append(value)
+
+            if self.peek().type == TokenType.COMMA:
+                self.consume()
+            elif self.peek().type == TokenType.RIGHT_BRACKET:
+                self.consume()
+                break
+            else:
+                raise ParserError("Expected comma or right bracket in array")
+
+        return array
+
+    def parse_number(self):
+        return self.consume(TokenType.NUMBER).value
+       
+
+if __name__ == "__main__":
+
+    try:
+        tokens = tokenize_from_file("../examples/test.json")
+        print("Tokens for input string: ")
+        for token in tokens:
+            print(token)
+
+        
+        print("---------------------")
+        parsed_json = Parser(tokens)
+        output = parsed_json.parse_value()
+
+        print("\n")
+
+        print("____ORIGINAL_OUTPUT_______")
+        print(output)
+
+        import pprint
+        pp = pprint.PrettyPrinter(indent=4, sort_dicts = False)
+        pp.pprint(output)
+
+
+    except (LexerError, ParserError) as e:
+        print(f"Error: {e}")
+
+    except FileNotFoundError as e:
+        print(f"File error {e}")
+
+    except Exception as e:
+            print(f"Unexpected Error: {e}")
 
 
