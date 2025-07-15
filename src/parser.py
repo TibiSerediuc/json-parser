@@ -1,5 +1,5 @@
 from error_handling import ParserError, LexerError
-from lexer import TokenType, Token, tokenize_from_file
+from lexer import TokenType, Token, tokenize_from_file, JSONLexer
 
 class Parser:
     def __init__(self, tokens):
@@ -110,17 +110,12 @@ if __name__ == "__main__":
         print("Tokens for input string: ")
         for token in tokens:
             print(token)
-
-        
+ 
         print("---------------------")
         parsed_json = Parser(tokens)
         output = parsed_json.parse_value()
 
         print("\n")
-
-        print("____ORIGINAL_OUTPUT_______")
-        print(output)
-
         import pprint
         pp = pprint.PrettyPrinter(indent=4, sort_dicts = False)
         pp.pprint(output)
