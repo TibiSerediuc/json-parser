@@ -1,5 +1,6 @@
-from error_handling import ParserError, LexerError
-from lexer import TokenType, Token, tokenize_from_file, JSONLexer
+from error_handling import ParserError
+from lexer import TokenType
+
 
 class Parser:
     def __init__(self, tokens):
@@ -15,7 +16,7 @@ class Parser:
             raise ParserError("Unexpected end of input")
         return self.tokens[self.index]
 
-    def consume(self, expected_type = None):
+    def consume(self, expected_type=None):
 
         if self.index >= len(self.tokens):
             raise ParserError("Unexpected end of input")
@@ -49,7 +50,6 @@ class Parser:
         else:
             raise ParserError(f"Unexpected token : {token}")
 
-
     def parse_object(self):
 
         obj = {}
@@ -79,13 +79,13 @@ class Parser:
 
         self.consume(TokenType.LEFT_BRACKET)
         array = []
-        
+
         if self.peek().type == TokenType.RIGHT_BRACKET:
             self.consume()
             return array
 
         while True:
-            
+
             value = self.parse_value()
             array.append(value)
 
@@ -101,33 +101,3 @@ class Parser:
 
     def parse_number(self):
         return self.consume(TokenType.NUMBER).value
-       
-
-if __name__ == "__main__":
-
-    try:
-        tokens = tokenize_from_file("../examples/test.json")
-        print("Tokens for input string: ")
-        for token in tokens:
-            print(token)
- 
-        print("---------------------")
-        parsed_json = Parser(tokens)
-        output = parsed_json.parse_value()
-
-        print("\n")
-        import pprint
-        pp = pprint.PrettyPrinter(indent=4, sort_dicts = False)
-        pp.pprint(output)
-
-
-    except (LexerError, ParserError) as e:
-        print(f"Error: {e}")
-
-    except FileNotFoundError as e:
-        print(f"File error {e}")
-
-    except Exception as e:
-            print(f"Unexpected Error: {e}")
-
-

@@ -10,7 +10,7 @@ authors = [
     {name = "TibiSerediuc", email = "tiberiu.serediuc@gmail.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.8.1"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
@@ -45,7 +45,7 @@ include = ["src*"]
 
 # Black configuration
 [tool.black]
-line-length = 88
+line-length = 79
 target-version = ['py38']
 include = '\.pyi?$'
 extend-exclude = '''
@@ -61,6 +61,9 @@ extend-exclude = '''
   | dist
 )/
 '''
+
+[flake8]
+max-line-llength = 79
 
 # isort configuration
 [tool.isort]
