@@ -1,9 +1,8 @@
 import os
-import sys
 from enum import Enum
 from error_handling import LexerError
 
-# All possible tokens in a JSON string
+# Token vocabulary for JSON
 class TokenType(Enum):
     NONE = None
     LEFT_BRACE = '{'
@@ -19,7 +18,7 @@ class TokenType(Enum):
     NULL = 'null'
     EOF = 'EOF'
     
-# States used inside the state machine for robust handling
+# States for the machine state
 class State(Enum):
     DEFAULT = 0
     STRING = 1
@@ -28,7 +27,7 @@ class State(Enum):
     ESCAPE = 4
     UNICODE_ESCAPE = 5
 
-# Used to trivially check whether the token is a single character token
+# Constants for lexer logic
 SINGLE_CHAR_TOKENS = {
         TokenType.LEFT_BRACE.value,
         TokenType.RIGHT_BRACE.value,
@@ -51,15 +50,49 @@ ESCAPE_MAP = {
 }
 
 NUMBERS_VALID_CHARS = "-+0123456789eE."
+LITERAL_STARTERS = "tfn" # true, false, null
+HEX_DIGITS = "0123456789ABCDEF"
 
 class Token:
+    """ Represents a lexical token with type and value """
 
-    def __init__(self, type_: TokenType, value):
-        self.type = type_
+    def __init__(self, _type: TokenType, value, position: int = 0):
+        self.type = _type
         self.value = value
+        self.position = position
 
     def __repr__(self):
-        return f"{self.type}, {self.value}"
+        return f"{self.type}, {self.value}, pos={self.position}"
+
+    # Operator overload for '=='
+    def __eq__(self, other):
+        if not instance(other, Token):
+            return False
+        return self.type == other.type and self.value == other.value
+
+class EscapeHandler:
+    """ Handles the escape sequence processing """
+
+    def process_escape(char: str) -> str:
+        """ Processes a single escape character """
+        if char in ESCAPE_MAP:
+            return ESCAPE_MAP[char]
+        raise LexerError(f"Invalid escape character '{char}'")
+
+    def process_unicode_escape(hex_digits: str) -> str:
+        """ Processes Unicode escape sequence \\uXXXX """
+        if len(hex_digits) != 4:
+            raise LexerError(f"Invalid Unicode escape sequence '\\u{hex_digits}'")
+
+        try:
+            return chr(int(hex_digits, 16))
+        except ValueError:
+            raise LexerError(f"Invalid Unicode escape sequence '\\u{hex_digits}'")
+
+    def is_valid_hex_digit(char: str) -> bool:
+        """ Check if character is a valid hexadecimal digit """
+        return char in HEX_DIGITS
+
 
 
 def tokenize(input_string):
@@ -262,16 +295,3 @@ def tokenize_from_string(json_string):
         LexerError: If there's an error during tokenization 
     """
     return tokenize(json_string)
-
-
-if __name__ == "__main__":
-    """
-    Main function to handle command line arguments and demonstrate usage.
-    """
-    try:
-        tokens = tokenize_from_file("../examples/test.json")
-        print("Tokens for input string: ")
-        for token in tokens:
-            print(token)
-    except LexerError:
-            print(f"Lexer Error: {e}")
